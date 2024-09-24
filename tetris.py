@@ -46,3 +46,49 @@ class Peca:
         self.tipo = random.randint(0, len(formas) - 1)
         self.cor = random.randint(1, len(cores) - 1)
         self.rotacao = 0
+    def imagem(self):
+        return formas[self.tipo][self.rotacao]
+
+    def rodar(self):
+        self.rotacao = (self.rotacao + 1) % len(formas[self.tipo])
+def criar_grade(peca_travada):
+    grade = [[0 for _ in range(largura_grade)] for _ in range(altura_grade)]
+
+    for i in range(altura_grade):
+        for j in range(largura_grade):
+            if (j, i) in peca_travada:
+                c = peca_travada[(j, i)]
+                grade[i][j] = c
+    return grade
+
+def colide(grade, peca):
+    forma = formas[peca.tipo][peca.rotacao]
+    for i, pos in enumerate(forma):
+        linha = peca.y + pos // 4
+        coluna = peca.x + pos % 4
+        if linha >= altura_grade or coluna < 0 or coluna >= largura_grade or (linha > -1 and grade[linha][coluna] != 0):
+            return True
+    return False
+
+def limpar_linhas(grade, peca_travada):
+    linhas_removidas = 0
+    for i in range(len(grade)-1, -1, -1):
+        if 0 not in grade[i]:
+            linhas_removidas += 1
+            for j in range(len(grade[i])):
+                try:
+                    del peca_travada[(j, i)]
+                except:
+                    continue
+
+    if linhas_removidas > 0:
+        for key in sorted(list(peca_travada), key=lambda x: x[1])[::-1]:
+            x, y = key
+            if y < i:
+                novo_key = (x, y + linhas_removidas)
+                peca_travada[novo_key] = peca_travada.pop(key)
+
+    return linhas_removidas
+
+def desenhar_janela(tela, grade, pontuacao):
+    tela.fill(preto)
