@@ -29,7 +29,7 @@ tamanho_bloco = 30
 largura_grade = 10
 altura_grade = 20
 
-# Formas das peças
+#formato das pecas
 formas = [
     [[1, 5, 9, 13], [4, 5, 6, 7]],
     [[4, 5, 9, 10], [2, 6, 5, 9]],
@@ -39,6 +39,7 @@ formas = [
     [[1, 4, 5, 6], [1, 4, 5, 9], [4, 5, 6, 9], [1, 5, 6, 9]],
     [[1, 2, 5, 6]],
 ]
+#criar classe das pecas
 class Peca:
     def __init__(self, x, y):
         self.x = x
@@ -60,7 +61,7 @@ def criar_grade(peca_travada):
                 c = peca_travada[(j, i)]
                 grade[i][j] = c
     return grade
-
+#colisao
 def colide(grade, peca):
     forma = formas[peca.tipo][peca.rotacao]
     for i, pos in enumerate(forma):
@@ -92,3 +93,126 @@ def limpar_linhas(grade, peca_travada):
 
 def desenhar_janela(tela, grade, pontuacao):
     tela.fill(preto)
+
+#desenhos da grade
+    for i in range(altura_grade):
+        for j in range(largura_grade):
+            pygame.draw.rect(tela, branco, (j*tamanho_bloco, i*tamanho_bloco, tamanho_bloco, tamanho_bloco), 1)
+            if grade[i][j] != 0:
+                pygame.draw.rect(tela, cores[grade[i][j]], (j*tamanho_bloco+1, i*tamanho_bloco+1, tamanho_bloco-2, tamanho_bloco-2))
+    
+    #pontuacao
+    font = pygame.font.SysFont('comicsans', 30)
+    texto_pontuacao = font.render(f'Pontuação: {pontuacao}', 1, branco)
+    tela.blit(texto_pontuacao, (10, 10))
+    
+    pygame.display.update()
+
+def desenhar_fim_jogo(tela, pontuacao):
+    tela.fill(preto)
+    font_grande = pygame.font.SysFont('comicsans', 50)
+    font_pequena = pygame.font.SysFont('comicsans', 30)
+    
+    texto_fim = font_grande.render('Fim de Jogo', 1, vermelho)
+    texto_pontuacao = font_pequena.render(f'Pontuação Final: {pontuacao}', 1, branco)
+    texto_recomecar = font_pequena.render('Pressione R para Recomeçar', 1, verde)
+    texto_sair = font_pequena.render('Pressione Q para Sair', 1, vermelho)
+    
+    tela.blit(texto_fim, (largura/2 - texto_fim.get_width()/2, 200))
+    tela.blit(texto_pontuacao, (largura/2 - texto_pontuacao.get_width()/2, 300))
+    tela.blit(texto_recomecar, (largura/2 - texto_recomecar.get_width()/2, 400))
+    tela.blit(texto_sair, (largura/2 - texto_sair.get_width()/2, 450))
+    
+    pygame.display.update()
+
+def jogo():
+    peca_travada = {}
+    grade = criar_grade(peca_travada)
+    mudar_peca = False
+    rodando = True
+    peca_atual = Peca(5, 0)
+    clock = pygame.time.Clock()
+    tempo_queda = 0
+    velocidade_queda = 0.30
+    pontuacao = 0
+
+    while rodando:
+        grade = criar_grade(peca_travada)
+        tempo_queda += clock.get_rawtime()
+        clock.tick()
+
+        if tempo_queda/1000 > velocidade_queda:
+            tempo_queda = 0
+            peca_atual.y += 1
+            if colide(grade, peca_atual):
+                peca_atual.y -= 1
+                mudar_peca = True
+
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                rodando = False
+
+            if evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_LEFT:
+                    peca_atual.x -= 1
+                    if colide(grade, peca_atual):
+                        peca_atual.x += 1
+                if evento.key == pygame.K_RIGHT:
+                    peca_atual.x += 1
+                    if colide(grade, peca_atual):
+                        peca_atual.x -= 1
+                if evento.key == pygame.K_DOWN:
+                    peca_atual.y += 1
+                    if colide(grade, peca_atual):
+                        peca_atual.y -= 1
+                if evento.key == pygame.K_UP:
+                    peca_atual.rodar()
+                    if colide(grade, peca_atual):
+                        peca_atual.rodar()  
+
+        forma_pos = formas[peca_atual.tipo][peca_atual.rotacao]
+        for i, pos in enumerate(forma_pos):
+            x, y = peca_atual.x + pos % 4, peca_atual.y + pos // 4
+            if y > -1:
+                grade[y][x] = peca_atual.cor
+
+        if mudar_peca:
+            for pos in forma_pos:
+                p = (peca_atual.x + pos % 4, peca_atual.y + pos // 4)
+                peca_travada[p] = peca_atual.cor
+            peca_atual = Peca(5, 0)
+            mudar_peca = False
+            
+            linhas_removidas = limpar_linhas(grade, peca_travada)
+            pontuacao += linhas_removidas * 100
+
+            if colide(grade, peca_atual):
+                rodando = False
+
+        desenhar_janela(tela, grade, pontuacao)
+
+    return pontuacao
+
+def main():
+    rodando = True
+    while rodando:
+        pontuacao_final = jogo()
+        fim_jogo = True
+        
+        while fim_jogo:
+            desenhar_fim_jogo(tela, pontuacao_final)
+            for evento in pygame.event.get():
+                if evento.type == pygame.QUIT:
+                    rodando = False
+                    fim_jogo = False
+                if evento.type == pygame.KEYDOWN:
+                    if evento.key == pygame.K_r:
+                        fim_jogo = False
+                    if evento.key == pygame.K_q:
+                        rodando = False
+                        fim_jogo = False
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
